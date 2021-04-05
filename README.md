@@ -7,12 +7,12 @@ employ cross-lingual pretraining via self-supervision (e.g. XLM, MASS, RE-LM), w
 the model to align the lexical- and high-level representations of the two
 languages. This is not effective for low-resource, distant languages.
 
-Our method enhances the bilingual masked language model pretraining (of XLM, RE-LM) with lexical-level information 
+Our method (**lexically-aligned** masked language model) enhances the bilingual masked language model pretraining (of XLM, RE-LM) with lexical-level information 
 by using type-level cross-lingual subword embeddings. 
 
-Our method (**lexically-aligned** XLM/RE-LM) improves BLEU scores in UNMT by up to 4.5 points.
+**Lexical masked language model pretraining** improves BLEU scores in UNMT by up to 4.5 points.
 Bilingual lexicon induction results also show that our method works better compared to established UNMT baselines.
-using our method compared to an established UNMT baseline.
+
 
 ![lexical_fig-1](https://user-images.githubusercontent.com/30402550/113608477-eb0a5000-964a-11eb-8376-35ec98903025.jpg)
 
@@ -27,6 +27,8 @@ This source code is largely based on [XLM](https://github.com/facebookresearch/X
 - [NumPy](http://www.numpy.org/) (tested on version 1.15.4)
 - [PyTorch](http://pytorch.org/) (tested on version 1.2.0)
 - [Apex](https://github.com/NVIDIA/apex#quick-start) (for fp16 training)
+- [fastText](https://github.com/facebookresearch/fastText))
+- [VecMap](https://github.com/artetxem/vecmap)
 
 #### Install Requirements 
 **Create Environment (Optional):**  Ideally, you should create a conda environment for the project.
@@ -44,7 +46,6 @@ Clone the project:
 
 ```
 git clone https://github.com/alexandra-chron/lexical_xlm_relm.git
-
 cd lexical_xlm_relm
 ```
 
@@ -86,11 +87,15 @@ subword VecMap embeddings.
 
 Before training the actual XLM, you need to learn fastText embeddings for the two corpora separately, after they have been split into subwords.
 
-To do this, after cloning [fastText](https://github.com/facebookresearch/fastText) repo, run:
+### 0. Training static subword embeddings
+
+To do this, after cloning [fastText](https://github.com/facebookresearch/fastText) repo,
+assuming you have placed the data in `./data/mk-en-xlm`:
+
 
 ```
-./fasttext skipgram -input ./data/mk-en/train.mk -output ./data/fasttext_1024.mk -dim 1024
-./fasttext skipgram -input ./data/mk-en/train.en -output ./data/fasttext_1024.en -dim 1024
+./fasttext skipgram -input ./data/mk-en-xlm/train.mk -output ./data/fasttext_1024.mk -dim 1024
+./fasttext skipgram -input ./data/mk-en-xlm/train.en -output ./data/fasttext_1024.en -dim 1024
 ```
 Now, you need to align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
 
@@ -163,15 +168,24 @@ python train.py                                              \
 
 ### Preprocessing 
 
-Before pretraining an HMR (high-monolingual-resource) monolingual MLM, make sure you
- have downloaded the HMR data and placed it in `./data/$HMR/` directory. 
- 
- The data should be in the form:  `{train_raw, valid_raw, test_raw}.$HMR`. 
+Follow the preprocessing of the data, as described in [RE-LM](https://github.com/alexandra-chron/relm_unmt).
 
-After that, run the following (example for En):
+
+### 0. Train static subword embeddings 
+Assuming you have placed the data in `./data/mk-en`:
 ```
-./get_data_mlm_pretraining.sh --src en
+./fasttext skipgram -input ./data/mk-en/train.mk -output ./data/fasttext_1024.mk -dim 1024
+./fasttext skipgram -input ./data/mk-en/train.en -output ./data/fasttext_1024.en -dim 1024
 ```
+Now, you need to align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
+
+```
+python3 ./vecmap/map_embeddings.py --identical fasttext_1024.en.vec fasttext_1024.mk.vec fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec --cuda 
+```
+
+Finally, simply concatenate the aligned vecmap vectors.
+
+```cat fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec > fasttext_1024.en_mk_relm.mapped.vec```
 
 
 ### 1. Train a monolingual LM 
@@ -210,7 +224,7 @@ python train.py                            \
 ### 3. Train a UNMT model (encoder and decoder initialized with RE-LM)
 Train a UNMT model as described in RE-LM. 
 
-#Reference
+# Reference
 
 If you use our work, please cite our paper: 
 
