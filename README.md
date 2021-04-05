@@ -210,12 +210,17 @@ python train.py                            \
 ### 3. Train a UNMT model (encoder and decoder initialized with RE-LM)
 Train a UNMT model as described in RE-LM. 
 
-```
-For the XLM baseline, follow the instructions in [XLM github page](https://github.com/facebookresearch/XLM)
+#Reference
 
 If you use our work, please cite our paper: 
 
-#### Reference
-
 ```
+@misc{chronopoulou2021improving,
+      title={Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural Machine Translation}, 
+      author={Alexandra Chronopoulou and Dario Stojanovski and Alexander Fraser},
+      year={2021},
+      eprint={2103.10531},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
 ```
