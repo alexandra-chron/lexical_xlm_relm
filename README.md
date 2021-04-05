@@ -32,8 +32,8 @@ This source code is largely based on [XLM](https://github.com/facebookresearch/X
 **Create Environment (Optional):**  Ideally, you should create a conda environment for the project.
 
 ```
-conda create -n relm python=3.6.9
-conda activate relm
+conda create -n lexical-lm python=3.6.9
+conda activate lexical-lm
 ```
 
 Install PyTorch ```1.2.0``` with the desired cuda version to use the GPU:
@@ -43,9 +43,9 @@ Install PyTorch ```1.2.0``` with the desired cuda version to use the GPU:
 Clone the project:
 
 ```
-git clone https://github.com/alexandra-chron/relm_unmt.git
+git clone https://github.com/alexandra-chron/lexical_xlm_relm.git
 
-cd relm_unmt
+cd lexical_xlm_relm
 ```
 
 
@@ -72,9 +72,96 @@ We sample 68M English sentences from [Newscrawl](http://data.statmt.org/news-cra
 
 We use Macedonian and Albanian Common Crawl deduplicated monolingual data from the [OSCAR corpus](https://oscar-corpus.com/).
 
-Our validation and test data is created by sampling from the  [SETIMES](http://opus.nlpl.eu/SETIMES.php) parallel En-Mk, En-Sq corpora. 
-To allow reproducing our results, we provide the validation and test data in `./data/mk-en` and `./data/sq-en` directories.
-## Preprocessing for pretraining
+The validation and test data is provided in the [RE-LM](https://github.com/alexandra-chron/relm_unmt/tree/master/data) github repo.
+
+# A) Lexical XLM 
+
+### Preprocessing
+
+Our preprocessing pipeline for XLM follows the one of the original [XLM](https://github.com/facebookresearch/XLM#1-preparing-the-data-1) repo. 
+
+After the data is preprocessed, we train an XLM model, 
+the embedding layer of which is initialized with aligned 
+subword VecMap embeddings.
+
+Before training the actual XLM, you need to learn fastText embeddings for the two corpora separately, after they have been split into subwords.
+
+To do this, after cloning [fastText](https://github.com/facebookresearch/fastText) repo, run:
+
+```
+./fasttext skipgram -input ./data/mk-en/train.mk -output ./data/fasttext_1024.mk -dim 1024
+./fasttext skipgram -input ./data/mk-en/train.en -output ./data/fasttext_1024.en -dim 1024
+```
+Now, you need to align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
+
+```
+python3 ./vecmap/map_embeddings.py --identical fasttext_1024.en.vec fasttext_1024.mk.vec fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec --cuda 
+```
+
+Finally, simply concatenate the aligned vecmap vectors.
+
+```cat fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec > fasttext_1024.en_mk.mapped.vec```
+
+### 1. Train the lexically aligned XLM
+
+```
+python3 train.py 
+--exp_name lexical_xlm_mk_en                  \
+--dump_path './dumped'                        \
+--data_path .data/mk-en-xlm                   \ 
+--lgs 'mk-en'                                 \
+--mlm_steps 'mk,en'                           \
+--emb_dim 1024                                \
+--n_layers 6                                  \
+--n_heads 8                                   \
+--dropout '0.1'                               \
+--attention_dropout '0.1'                     \  
+--gelu_activation true                        \
+--batch_size 32                               \
+--bptt 256                                    \
+--optimizer 'adam,lr=0.0001'                  \ 
+--epoch_size 200000                           \
+--validation_metrics _valid_mlm_ppl           \ 
+--stopping_criterion '_valid_mlm_ppl,10'      \ 
+--reload_emb ./fasttext_1024.en_mk.mapped.vec 
+```
+
+### 2. Train a UNMT model (encoder and decoder initialized with lexically aligned XLM)
+
+```
+python train.py                                              \
+--exp_name unsupMT_en-mk_lexical_xlm                         \
+--dump_path ./dumped/                                        \
+--reload_model 'lexical_xlm_mk_en.pth,lexical_xlm_mk_en.pth' \
+--data_path './data/mk-en-xlm'                               \
+--lgs en-mk                                                  \
+--ae_steps en,mk                                             \
+--bt_steps en-mk-en,mk-en-mk                                 \
+--word_shuffle 3                                             \
+--word_dropout 0.1                                           \
+--word_blank 0.1                                             \
+--lambda_ae 0:1,100000:0.1,300000:0                          \
+--encoder_only False                                         \
+--emb_dim 1024                                               \
+--n_layers 6                                                 \
+--n_heads 8                                                  \
+--dropout 0.1                                                \
+--attention_dropout 0.1                                      \
+--gelu_activation true                                       \
+--tokens_per_batch 1000                                      \
+--batch_size 32                                              \
+--bptt 256                                                   \
+--optimizer adam_inverse_sqrt,beta1=0.9,beta2=0.98,lr=0.0001 \
+--epoch_size 50000                                           \
+--eval_bleu true                                             \
+--stopping_criterion valid_mk-en_mt_bleu,10                  \
+--validation_metrics valid_mk-en_mt_bleu                     \
+
+```
+
+# B) Lexical RE-LM 
+
+### Preprocessing 
 
 Before pretraining an HMR (high-monolingual-resource) monolingual MLM, make sure you
  have downloaded the HMR data and placed it in `./data/$HMR/` directory. 
@@ -87,62 +174,15 @@ After that, run the following (example for En):
 ```
 
 
-## RE-LM 
-
 ### 1. Train a monolingual LM 
-Train your monolingual masked LM (BERT without the next-sentence prediction task) on the monolingual data:
 
-```
+Pretrain a monolingual masked LM in a high-resource language as described in [RE-LM](https://github.com/alexandra-chron/relm_unmt#re-lm) and then preprocess the data used for fine-tuning following the same repo. 
 
-python train.py                            \
---exp_name mono_mlm_en_68m                 \
---dump_path ./dumped                       \
---data_path ./data/en/                     \
---lgs 'en'                                 \
---mlm_steps 'en'                           \
---emb_dim 1024                             \
---n_layers 6                               \
---n_heads 8                                \
---dropout '0.1'                            \
---attention_dropout '0.1'                  \
---gelu_activation true                     \
---batch_size 32                            \
---bptt 256                                 \
---optimizer 'adam,lr=0.0001'               \
---epoch_size 200000                        \
---validation_metrics valid_en_mlm_ppl      \
---stopping_criterion 'valid_en_mlm_ppl,10' 
-
-## There are other parameters that are not specified here (see train.py).
-```
-
-## Preprocessing for fine-tuning (and UNMT)
-
-Before fine-tuning the pretrained MLM and running UNMT, make sure you
- have downloaded the LMR data and placed it in `./data/$LMR-$HMR/` directory. 
- 
- The data should be in the form:  `{train_raw, valid_raw, test_raw}.$LMR`. 
- 
- Then, run the following (example for En, Mk):
-```
-./get_data_and_preprocess.sh --src en --tgt mk
-```
-
-In Step 2, the embedding layer (and the output layer) of the MLM model will be increased by the amount of 
-new items added to the existing vocabulary. 
-
-In the directory `./data/$LMR-$HMR/`, a file named `vocab.$LMR-$HMR-ext-by-$NUMBER` has been created. 
-This number indicates by how many items we need to extend the initial vocabulary, and consequently 
-the embedding and linear layer, to account for the LMR language. 
-
-You will need to give this value to the `--increase_vocab_by` argument so that you successfully run fine-tuning (step 2).  
-
-
-### 2. Fine-tune it on both the LMR and HMR languages
+### 2. Fine-tune it on both the LMR and HMR languages (add lexically-aligned embeddings)
 
 ```
 python train.py                            \
---exp_name finetune_en_mlm_mk              \
+--exp_name lexically_finetune_en_mlm_mk              \
 --dump_path ./dumped/                      \
 --reload_model 'mono_mlm_en_68m.pth'       \
 --data_path ./data/mk-en/                  \
@@ -162,45 +202,15 @@ python train.py                            \
 --stopping_criterion valid_mk_mlm_ppl,10   \
 --increase_vocab_for_lang en               \
 --increase_vocab_from_lang mk              \
---increase_vocab_by NUMBER #(see ./data/mk-en/vocab.mk-en-ext-by-$NUMBER)
+--increase_vocab_by NUMBER #(see ./data/mk-en/vocab.mk-en-ext-by-$NUMBER) \
+--reload_emb ./data/mk-en/fasttext_1024.en_mk_relm.mapped.vec              \
+--relm_vecmap True
 ```
 
 ### 3. Train a UNMT model (encoder and decoder initialized with RE-LM)
+Train a UNMT model as described in RE-LM. 
 
 ```
-python train.py                            \
---exp_name unsupMT_ft_mk                   \
---dump_path ./dumped/                      \
---reload_model 'finetune_en_mlm_mk.pth,finetune_en_mlm_mk.pth' \
---data_path './data/mk-en'                 \
---lgs en-mk                                \
---ae_steps en,mk                           \
---bt_steps en-mk-en,mk-en-mk               \
---word_shuffle 3                           \
---word_dropout 0.1                         \
---word_blank 0.1                           \
---lambda_ae 0:1,100000:0.1,300000:0        \
---encoder_only False                       \
---emb_dim 1024                             \
---n_layers 6                               \
---n_heads 8                                \
---dropout 0.1                              \
---attention_dropout 0.1                    \
---gelu_activation true                     \
---tokens_per_batch 1000                    \
---batch_size 32                            \
---bptt 256                                 \
---optimizer adam_inverse_sqrt,beta1=0.9,beta2=0.98,lr=0.0001 \
---epoch_size 50000                         \
---eval_bleu true                           \
---stopping_criterion valid_mk-en_mt_bleu,10  \
---validation_metrics valid_mk-en_mt_bleu   \
---increase_vocab_for_lang en               \
---increase_vocab_from_lang mk
-
-```
-
-
 For the XLM baseline, follow the instructions in [XLM github page](https://github.com/facebookresearch/XLM)
 
 If you use our work, please cite our paper: 
