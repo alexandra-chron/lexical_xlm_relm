@@ -70,13 +70,13 @@ def check_model_params(params):
             assert all([x == '' or os.path.isfile(x) for x in s])
 
 
-def set_pretrain_emb(model, dico, word2id, embeddings):
+def set_pretrain_emb(model, dico, word2id, embeddings, initial_index):
     """
     Pretrain word embeddings.
     """
     n_found = 0
     with torch.no_grad():
-        for i in range(len(dico)):
+        for i in range(initial_index, len(dico)):
             idx = word2id.get(dico[i], None)
             if idx is None:
                 continue
@@ -84,7 +84,7 @@ def set_pretrain_emb(model, dico, word2id, embeddings):
             model.embeddings.weight[i] = embeddings[idx].cuda()
             model.pred_layer.proj.weight[i] = embeddings[idx].cuda()
     logger.info("Pretrained %i/%i words (%.3f%%)."
-                % (n_found, len(dico), 100. * n_found / len(dico)))
+                % (n_found, len(dico) - initial_index, 100. * n_found / (len(dico) - initial_index)))
 
 
 def modify_params(initial, num_new_dim, param_name):
@@ -122,11 +122,7 @@ def build_model(params, dico):
         # build
         model = TransformerModel(params, dico, is_encoder=True, with_output=True)
 
-        # reload pretrained word embeddings
-        if params.reload_emb != '':
-            word2id, embeddings = load_embeddings(params.reload_emb, params)
-            set_pretrain_emb(model, dico, word2id, embeddings)
-
+        initial_index = 0
         # reload a pretrained model
         if params.reload_model != '':
             logger.info("Reloading model from %s ..." % params.reload_model)
@@ -137,8 +133,16 @@ def build_model(params, dico):
 
             if params.increase_vocab_by != 0:
                 logger.info('Fine-tuning model with a different vocabulary. Increasing loaded embeddings size ...')
+                if params.relm_vecmap:
+                    initial_index = reloaded['embeddings.weight'].size(0)
                 for param_name in ['embeddings.weight', 'pred_layer.proj.weight', 'pred_layer.proj.bias']:
                     reloaded[param_name] = modify_params(reloaded[param_name], params.increase_vocab_by, param_name)
+            else:
+                initial_index = 0
+        # reload pretrained word embeddings
+        if params.reload_emb != '':
+            word2id, embeddings = load_embeddings(params.reload_emb, params)
+            set_pretrain_emb(model, dico, word2id, embeddings, initial_index)
 
             model.load_state_dict(reloaded, strict=False)
 
@@ -153,12 +157,13 @@ def build_model(params, dico):
         encoder = TransformerModel(params, dico, is_encoder=True,
                                    with_output=True)  # TODO: only output when necessary - len(params.clm_steps + params.mlm_steps) > 0
         decoder = TransformerModel(params, dico, is_encoder=False, with_output=True)
+        # print(encoder)
 
         # reload pretrained word embeddings
         if params.reload_emb != '':
             word2id, embeddings = load_embeddings(params.reload_emb, params)
-            set_pretrain_emb(encoder, dico, word2id, embeddings)
-            set_pretrain_emb(decoder, dico, word2id, embeddings)
+            set_pretrain_emb(encoder, dico, word2id, embeddings, initial_index=0)
+            set_pretrain_emb(decoder, dico, word2id, embeddings, initial_index=0)
 
         # reload a pretrained model
         if params.reload_model != '':
@@ -211,8 +216,8 @@ def build_model(params, dico):
 
                 decoder.load_state_dict(dec_reload, strict=False)
 
-        logger.debug("Encoder: {}".format(encoder))
-        logger.debug("Decoder: {}".format(decoder))
+        logger.info("Encoder: {}".format(encoder))
+        logger.info("Decoder: {}".format(decoder))
         logger.info(
             "Number of parameters (encoder): %i" % sum([p.numel() for p in encoder.parameters() if p.requires_grad]))
         logger.info(

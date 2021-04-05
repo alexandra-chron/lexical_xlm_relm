@@ -217,6 +217,8 @@ def get_parser():
 
     parser.add_argument('--use_adapters', type=bool_flag, default=False)
     parser.add_argument('--adapter_size', type=int, default=0)
+    parser.add_argument('--freeze_embs', type=bool_flag, default=False)
+    parser.add_argument('--relm_vecmap', type=bool_flag, default=False)
 
     return parser
 
