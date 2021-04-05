@@ -1,7 +1,7 @@
 This repository contains source code for our NAACL 2021 paper "Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural
 Machine Translation"  [(Arxiv preprint link)](https://arxiv.org/abs/2103.10531)
 
-# Introduction 
+# Model  
 Successful methods for unsupervised neural machine translation (UNMT)
 employ cross-lingual pretraining via self-supervision (e.g. XLM, MASS, RE-LM), which requires
 the model to align the lexical- and high-level representations of the two
@@ -14,7 +14,10 @@ Our method (**lexically-aligned** XLM/RE-LM) improves BLEU scores in UNMT by up 
 Bilingual lexicon induction results also show that our method works better compared to established UNMT baselines.
 using our method compared to an established UNMT baseline.
 
+![lexical_fig-1](https://user-images.githubusercontent.com/30402550/113608477-eb0a5000-964a-11eb-8376-35ec98903025.jpg)
+
 This source code is largely based on [XLM](https://github.com/facebookresearch/XLM) and [RE-LM](https://github.com/alexandra-chron/relm_unmt).
+
 
 # Prerequisites 
 
