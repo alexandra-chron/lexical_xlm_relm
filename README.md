@@ -1,16 +1,20 @@
-This repository contains source code for our EMNLP 2020 paper "Reusing a Pretrained Language Model on Languages with Limited Corpora for Unsupervised NMT"  [(Paper link)](https://www.aclweb.org/anthology/2020.emnlp-main.214/)
+This repository contains source code for our NAACL 2021 paper "Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural
+Machine Translation"  [(Arxiv preprint link)](https://arxiv.org/abs/2103.10531)
 
 # Introduction 
+Successful methods for unsupervised neural machine translation (UNMT)
+employ cross-lingual pretraining via self-supervision (e.g. XLM, MASS, RE-LM), which requires
+the model to align the lexical- and high-level representations of the two
+languages. This is not effective for low-resource, distant languages.
 
-This paper presents a method to fine-tune of a pretrained monolingual LM (on a high-resource language) to a low-resource language,
- in order to serve as initialization of an Unsupervised NMT (UNMT) encoder-decoder model. 
- To this end, we propose a vocabulary extension method to allow fine-tuning. 
- 
-Our method, entitled **RE-LM**, provides very competitive UNMT results in low-resource - 
-high-resource language pairs, outperforming XLM  in English-Macedonian (En-Mk) and English-Albanian (En-Sq), 
-yielding more than +8.3 BLEU points for all four translation directions.
+Our method enhances the bilingual masked language model pretraining (of XLM, RE-LM) with lexical-level information 
+by using type-level cross-lingual subword embeddings. 
 
-This code is built on using the [XLM](https://github.com/facebookresearch/XLM) baseline, which is publicly available. 
+Our method (**lexically-aligned** XLM/RE-LM) improves BLEU scores in UNMT by up to 4.5 points.
+Bilingual lexicon induction results also show that our method works better compared to established UNMT baselines.
+using our method compared to an established UNMT baseline.
+
+This source code is largely based on [XLM](https://github.com/facebookresearch/XLM) and [RE-LM](https://github.com/alexandra-chron/relm_unmt).
 
 # Prerequisites 
 
@@ -194,77 +198,6 @@ python train.py                            \
 ```
 
 
-
-## RE-LM + adapters 
-### 1. This step is the same as with RE-LM.
-
-### 2. Fine-tune part of the model on the target language only using adapters
-
-```
-python train.py                             \
---exp_name finetune_en_mlm_mk_adapters      \
---dump_path ./dumped/                       \
---reload_model 'mono_mlm_en_68m.pth'        \
---data_path ./data/mk-en                    \
---lgs 'en-mk'                               \
---clm_steps ''                              \
---mlm_steps 'mk'                            \
---mlm_eval_steps 'en'                       \
---emb_dim 1024                              \
---n_layers 6                                \
---n_heads 8                                 \
---dropout 0.1                               \
---attention_dropout 0.1                     \
---gelu_activation true                      \
---use_adapters True                         \
---adapter_size 256                          \
---batch_size 32                             \
---bptt 256                                  \
---optimizer adam,lr=0.0001                  \
---epoch_size 50000                          \
---validation_metrics valid_mk_mlm_ppl       \
---stopping_criterion valid_mk_mlm_ppl,10    \
---increase_vocab_for_lang en                \
---increase_vocab_from_lang mk               \
---increase_vocab_by NUMBER #(see ./data/mk-en/vocab.mk-en-ext-by-$NUMBER) 
-```
-
-### 3. Train a UNMT model (encoder and decoder initialized with RE-LM + adapters)
-
-```
-python train.py                            \
---exp_name unsupMT_ft_mk                   \
---dump_path ./dumped/                      \
---reload_model 'finetune_en_mlm_mk_adapters.pth,finetune_en_mlm_mk_adapters.pth' \
---data_path './data/mk-en'                 \
---lgs en-mk                                \
---ae_steps en,mk                           \
---bt_steps en-mk-en,mk-en-mk               \
---word_shuffle 3                           \
---word_dropout 0.1                         \
---word_blank 0.1                           \
---lambda_ae 0:1,100000:0.1,300000:0        \
---encoder_only False                       \
---emb_dim 1024                             \
---n_layers 6                               \
---n_heads 8                                \
---dropout 0.1                              \
---attention_dropout 0.1                    \
---gelu_activation true                     \
---use_adapters True                        \
---adapter_size 256                         \
---tokens_per_batch 1000                    \
---batch_size 32                            \
---bptt 256                                 \
---optimizer adam_inverse_sqrt,beta1=0.9,beta2=0.98,lr=0.0001 \
---epoch_size 50000                         \
---eval_bleu true                           \
---stopping_criterion valid_mk-en_mt_bleu,10 \
---validation_metrics valid_mk-en_mt_bleu   \
---increase_vocab_for_lang en               \
---increase_vocab_from_lang mk              
-```
-
 For the XLM baseline, follow the instructions in [XLM github page](https://github.com/facebookresearch/XLM)
 
 If you use our work, please cite our paper: 
@@ -272,17 +205,4 @@ If you use our work, please cite our paper:
 #### Reference
 
 ```
-@inproceedings{chronopoulou-etal-2020-reusing,
-    title = "{R}eusing a {P}retrained {L}anguage {M}odel on {L}anguages with {L}imited {C}orpora for {U}nsupervised {NMT}",
-    author = "Chronopoulou, Alexandra  and
-      Stojanovski, Dario  and
-      Fraser, Alexander",
-    booktitle = "Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)",
-    month = nov,
-    year = "2020",
-    address = "Online",
-    publisher = "Association for Computational Linguistics",
-    url = "https://www.aclweb.org/anthology/2020.emnlp-main.214",
-    pages = "2703--2711",
-}
 ```
