@@ -1,5 +1,5 @@
 This repository contains source code for our NAACL 2021 paper "Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural
-Machine Translation"  [(Arxiv preprint link)](https://arxiv.org/abs/2103.10531)
+Machine Translation"  [(Arxiv preprint link)](https://arxiv.org/abs/2103.10531).
 
 # Model  
 Successful methods for unsupervised neural machine translation (UNMT)
@@ -27,7 +27,7 @@ This source code is largely based on [XLM](https://github.com/facebookresearch/X
 - [NumPy](http://www.numpy.org/) (tested on version 1.15.4)
 - [PyTorch](http://pytorch.org/) (tested on version 1.2.0)
 - [Apex](https://github.com/NVIDIA/apex#quick-start) (for fp16 training)
-- [fastText](https://github.com/facebookresearch/fastText))
+- [fastText](https://github.com/facebookresearch/fastText)
 - [VecMap](https://github.com/artetxem/vecmap)
 
 #### Install Requirements 
