@@ -85,25 +85,25 @@ After the data is preprocessed, we train an XLM model,
 the embedding layer of which is initialized with aligned 
 subword VecMap embeddings.
 
-Before training the actual XLM, you need to learn fastText embeddings for the two corpora separately, after they have been split into subwords.
+Before training the actual XLM, we learn fastText embeddings for the two corpora separately, after they have been split into subwords.
 
 ### 0. Training static subword embeddings
 
 To do this, after cloning [fastText](https://github.com/facebookresearch/fastText) repo,
-assuming you have placed the data in `./data/mk-en-xlm`:
+assuming the data is placed in `./data/mk-en-xlm`:
 
 
 ```
 ./fasttext skipgram -input ./data/mk-en-xlm/train.mk -output ./data/fasttext_1024.mk -dim 1024
 ./fasttext skipgram -input ./data/mk-en-xlm/train.en -output ./data/fasttext_1024.en -dim 1024
 ```
-Now, you need to align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
+Now, we align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
 
 ```
 python3 ./vecmap/map_embeddings.py --identical fasttext_1024.en.vec fasttext_1024.mk.vec fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec --cuda 
 ```
 
-Finally, simply concatenate the aligned vecmap vectors.
+Finally, we simply concatenate the aligned vecmap vectors.
 
 ```cat fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec > fasttext_1024.en_mk.mapped.vec```
 
