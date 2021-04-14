@@ -79,31 +79,27 @@ The validation and test data is provided in the [RE-LM](https://github.com/alexa
 
 ### Preprocessing
 
-Our preprocessing pipeline for XLM follows the one of the original [XLM](https://github.com/facebookresearch/XLM#1-preparing-the-data-1) repo. 
-
-After the data is preprocessed, we train an XLM model, 
-the embedding layer of which is initialized with aligned 
-subword VecMap embeddings.
-
-Before training the actual XLM, we learn fastText embeddings for the two corpora separately, after they have been split into subwords.
+We split the training corpora for the language pair of interest (for this example, assume En-Mk) using the **exact** same preprocessing pipeline as [XLM](https://github.com/facebookresearch/XLM#1-preparing-the-data-1).
 
 ### 0. Training static subword embeddings
 
+We initially learn fastText embeddings for the two corpora separately. 
+
 To do this, after cloning [fastText](https://github.com/facebookresearch/fastText) repo,
-assuming the data is placed in `./data/mk-en-xlm`:
+assuming the data is placed in `./data/mk-en-xlm`, run:
 
 
 ```
 ./fasttext skipgram -input ./data/mk-en-xlm/train.mk -output ./data/fasttext_1024.mk -dim 1024
 ./fasttext skipgram -input ./data/mk-en-xlm/train.en -output ./data/fasttext_1024.en -dim 1024
 ```
-Now, we align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
+Then, we align the fastText vectors into a common space (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
 
 ```
 python3 ./vecmap/map_embeddings.py --identical fasttext_1024.en.vec fasttext_1024.mk.vec fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec --cuda 
 ```
 
-Finally, we simply concatenate the aligned vecmap vectors.
+Finally, we simply concatenate the aligned vecmap vectors. These will be used to initialize the embedding layer of XLM.
 
 ```cat fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec > fasttext_1024.en_mk.mapped.vec```
 
@@ -170,14 +166,16 @@ python train.py                                              \
 
 Follow the preprocessing of the data, as described in [RE-LM](https://github.com/alexandra-chron/relm_unmt).
 
+**Attention**: preprocessing is different than XLM, the data should be re-preprocessed.
 
 ### 0. Train static subword embeddings 
-Assuming you have placed the data in `./data/mk-en`:
+Assuming you have placed the data used for RE-LM in `./data/mk-en`:
+
 ```
 ./fasttext skipgram -input ./data/mk-en/train.mk -output ./data/fasttext_1024.mk -dim 1024
 ./fasttext skipgram -input ./data/mk-en/train.en -output ./data/fasttext_1024.en -dim 1024
 ```
-Now, you need to align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. After cloning its github repo ([VecMap](https://github.com/artetxem/vecmap)), run:
+Now, you need to align the fastText vectors (without a seed dictionary, based on identical strings) using VecMap. To do that, run:
 
 ```
 python3 ./vecmap/map_embeddings.py --identical fasttext_1024.en.vec fasttext_1024.mk.vec fasttext_1024.en.mapped.vec fasttext_1024.mk.mapped.vec --cuda 
@@ -196,7 +194,7 @@ Pretrain a monolingual masked LM in a high-resource language as described in [RE
 
 ```
 python train.py                            \
---exp_name lexically_finetune_en_mlm_mk              \
+--exp_name lexically_finetune_en_mlm_mk    \
 --dump_path ./dumped/                      \
 --reload_model 'mono_mlm_en_68m.pth'       \
 --data_path ./data/mk-en/                  \
