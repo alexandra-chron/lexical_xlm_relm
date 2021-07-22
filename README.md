@@ -1,5 +1,4 @@
-This repository contains source code for our NAACL 2021 paper "Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural
-Machine Translation"  [(Arxiv preprint link)](https://arxiv.org/abs/2103.10531).
+This repository contains source code for our NAACL 2021 [paper](https://aclanthology.org/2021.naacl-main.16.pdf) "Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural Machine Translation".
 
 # Model  
 Successful methods for unsupervised neural machine translation (UNMT)
