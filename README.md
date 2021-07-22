@@ -227,12 +227,18 @@ Train a UNMT model as described in RE-LM.
 If you use our work, please cite our paper: 
 
 ```
-@misc{chronopoulou2021improving,
-      title={Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural Machine Translation}, 
-      author={Alexandra Chronopoulou and Dario Stojanovski and Alexander Fraser},
-      year={2021},
-      eprint={2103.10531},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@inproceedings{chronopoulou-etal-2021-improving,
+    title = "Improving the Lexical Ability of Pretrained Language Models for Unsupervised Neural Machine Translation",
+    author = "Chronopoulou, Alexandra  and
+      Stojanovski, Dario  and
+      Fraser, Alexander",
+    booktitle = "Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies",
+    month = jun,
+    year = "2021",
+    address = "Online",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2021.naacl-main.16",
+    doi = "10.18653/v1/2021.naacl-main.16",
+    pages = "173--180",
 }
 ```
